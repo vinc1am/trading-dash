@@ -131,7 +131,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-Use this space to list resources you find helpful and would like to give credit to. I've included a few of my favorites to kick things off!
+This project would not have been possible without the valuable resources and insights derived from the following sources:
 
 
 * [Stocks on the Move](https://www.amazon.com/gp/product/1511466146/ref=as_li_qf_asin_il_tl?ie=UTF8&tag=teddykoker-20&creative=9325&linkCode=as2&creativeASIN=1511466146&linkId=92abe2e8f3dd2c9b9cc7d23fa6693dc5)
