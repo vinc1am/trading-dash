@@ -1,0 +1,96 @@
+<nav class="sidebar sidebar-offcanvas" id="sidebar">
+  <ul class="nav">
+    <li class="nav-item">
+      <a class="nav-link" href="index.html">
+        <span class="menu-title">Dashboard</span>
+        <i class="mdi mdi-collage menu-icon"></i>
+      </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('stocks') }}">
+            <span class="menu-title">Stock Data Extraction</span>
+            <i class="mdi mdi-access-point menu-icon"></i>
+        </a>
+    </li>
+
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
+        <span class="menu-title">MVS Portfolio Algo</span>
+        <i class="menu-arrow"></i>
+        <i class="mdi mdi-crown menu-icon"></i>
+      </a>
+      <div class="collapse" id="ui-basic">
+        <ul class="nav flex-column sub-menu">
+          <li class="nav-item"> <a class="nav-link" href="{{ url_for('top_sectors') }}">Top MVS Sectors</a></li>
+          <li class="nav-item"> <a class="nav-link" href="{{ url_for('top_stocks') }}">Top MVS Stocks</a></li>
+          <li class="nav-item"> <a class="nav-link" href="{{ url_for('portfolio') }}">Optimised Portfolio</a></li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="nav-item sidebar-actions" >
+        <span class="nav-link">
+            <div class="mt-4">
+                <div class="border-bottom">
+                    <p class="text-secondary">Message</p>
+                </div>
+                <div id="logWrapper" style="overflow: hidden; height: 300px;">
+                    <div id="logWindow" style="background-color: black; color: white; height: 100%; overflow: scroll; padding-right: 20px; margin-right: -20px; word-wrap: break-word; white-space: pre-wrap;"></div>
+                </div>
+            </div>
+        </span>
+    </li>
+
+
+    
+  </ul>
+</nav>
+
+
+<script>
+
+    // ===================
+    //     System Log
+    // ===================
+    let eventSource = new EventSource("/stream_logs");
+    eventSource.onmessage = function(event) {
+        // console.log(event.data);
+        let log = JSON.parse(event.data);
+
+        let logWindow = document.getElementById("logWindow");
+
+        if (log.drop_last && logWindow.textContent.trim() !== '') {
+            logWindow.lastChild.remove(); 
+        }
+
+        let logEntry = document.createElement('div');
+        
+        let characterElement = document.createElement('span');
+        characterElement.textContent = log.character;
+        if (log.color_index == 0) {
+          characterElement.style.color = '#9370DB';
+        } else {
+          characterElement.style.color = 'lightgreen';
+        }
+        characterElement.style.fontWeight = 'bold';
+        characterElement.style.fontSize = '1.2em';
+        logEntry.appendChild(characterElement);
+
+        let messages = log.message.split('<br/>');
+        for (let message of messages) {
+            let messageElement = document.createElement('span');
+            messageElement.textContent = ' ' + message;
+            messageElement.style.color = 'white';
+            logEntry.appendChild(messageElement);
+
+            let breakElement = document.createElement('br');
+            logEntry.appendChild(breakElement);
+        }
+
+        logWindow.appendChild(logEntry);
+
+        // Automatic scrolling
+        logWindow.scrollTop = logWindow.scrollHeight;
+    };
+</script>

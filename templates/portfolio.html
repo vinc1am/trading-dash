@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Trading Dash</title>
+    <link rel="stylesheet" href="../../assets/vendors/mdi/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="../../assets/vendors/css/vendor.bundle.base.css">
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="shortcut icon" href="../../assets/images/favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="../../assets/css/jquery.dataTables.min.css"/>
+    <script src="../assets/js/jquery-3.5.1.min.js"></script>
+    <script src="../assets/js/plotly-latest.min.js"></script>
+
+
+  </head>
+  <body>
+    <div class="container-scroller">
+
+      {% include '_navbar.html' %}
+      <div class="container-fluid page-body-wrapper">
+
+
+        {% include '_sidebar.html' %}
+
+        <div class="main-panel">
+          <div class="content-wrapper">
+
+            <div class="row">
+                <div class="col-lg-12 grid-margin stretch-card">
+                    <div class="card">
+                        <div class="card-body">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4 class="card-title">Portfolio Configuration</h4>
+            
+                                    <!-- Input for Portfolio Value -->
+                                    <label for="portfolioValue">Portfolio Value:</label>
+                                    <input type="number" id="portfolioValue" name="portfolioValue" value="10000">
+                                    
+                                    <!-- Input for Transaction Cost -->
+                                    <label for="transactionCost">Transaction Cost:</label>
+                                    <input type="number" id="transactionCost" name="transactionCost" value="15">
+                                </div>
+                                
+                                <button class="btn btn-primary" onclick="calPortfolio()">Optimise Portfolio</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 stretch-card grid-margin">
+                <div class="card bg-gradient-danger card-img-holder text-white">
+                  <div class="card-body">
+                    <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
+                    <h4 class="font-weight-normal mb-3">Portfolio Value <i class="mdi mdi-crown menu-icon mdi-24px float-right"></i>
+                    </h4>
+                    <h2 class="mb-5">$ 0</h2>
+                    <h6 class="card-text" style="background-color: grey;">Estimated Cost $0 (0%)</h6>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 stretch-card grid-margin">
+                <div class="card bg-gradient-info card-img-holder text-white">
+                  <div class="card-body">
+                    <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
+                    <h4 class="font-weight-normal mb-3">Estimated Return <i class="mdi mdi-elevation-rise mdi-24px float-right"></i>
+                    </h4>
+                    <h2 class="mb-5">$ 0 (0%)</h2>
+                    <h6 class="card-text" style="background-color: grey;">95% CI [0%; 0%]</h6>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 stretch-card grid-margin">
+                <div class="card bg-gradient-success card-img-holder text-white">
+                  <div class="card-body">
+                    <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
+                    <h4 class="font-weight-normal mb-3">Sharpe Ratio <i class="mdi mdi-image-broken-variant mdi-24px float-right"></i>
+                    </h4>
+                    <h2 class="mb-5">0</h2>
+                    <h6 class="card-text" style="background-color: grey;">Volatility 0%</h6>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <div class="row">
+                <div class="col-lg-12 grid-margin stretch-card">
+                    <div class="card">
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4 class="card-title">Optimised Portfolio</h4>
+                        </div>
+                        <p class="card-description"></p>
+                        <table class="table table-hover">
+                        <thead>
+                            <tr>
+                            <th>Stocks</th>
+                            <th>Price</th>
+                            <th>Weight</th>
+                            <th>Volume</th>
+                            <th>Total Value</th>
+                            <th>Portfolio</th>
+                            </tr>
+                        </table>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-12 grid-margin stretch-card">
+                    <div class="card">
+                        <div class="card-body" style="height: 800px; position: relative;">
+                            <div id="lineChart" style="height: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+          </div>
+          {% include '_footer.html' %}
+        </div>
+      </div>
+
+    </div>
+    <script src="../../assets/vendors/js/vendor.bundle.base.js"></script>
+    <script src="../../assets/vendors/chart.js/Chart.min.js"></script>
+    <script src="../../assets/js/off-canvas.js"></script>
+    <script src="../../assets/js/hoverable-collapse.js"></script>
+    <script src="../../assets/js/misc.js"></script>
+    <script src="../../assets/js/jquery.dataTables.min.js"></script>
+
+  
+    <script>
+
+      // =====================
+      //   Sectors MVS Table
+      // =====================
+      $(document).ready(function() {
+          $('.table').DataTable({
+              "pageLength": 5
+          });
+      });
+
+
+      // =====================
+      //   Load Portfolio
+      // =====================
+        // Function to load MVS stocks data
+        function load_portfolio() {
+            fetch('/load_portfolio')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Received data:', data);
+
+                // Update the Cardboard
+                document.querySelector('.card.bg-gradient-danger h2').innerText = `$${data['portfolio']['portfolio_value'].toFixed(2)}`;
+                document.querySelector('.card.bg-gradient-danger h6').innerText = `Estimated Cost $${data['portfolio']['cost'].toFixed(2)} (${(data['portfolio']['cost']/data['portfolio']['portfolio_value']*100).toFixed(2)}%)`;
+                document.querySelector('.card.bg-gradient-info h2').innerText = `$${data['portfolio']['portfolio_return'].toFixed(2)} (${((data['portfolio']['portfolio_return']/data['portfolio']['portfolio_value'])*100).toFixed(2)}%)`;
+                document.querySelector('.card.bg-gradient-info h6').innerText = `95% CI [${(data['portfolio']['confidence_interval'][0]*100).toFixed(2)}%; ${(data['portfolio']['confidence_interval'][1]*100).toFixed(2)}%]`;
+                document.querySelector('.card.bg-gradient-success h2').innerText = `${(data['portfolio']['performance'][2]).toFixed(2)}`;
+                document.querySelector('.card.bg-gradient-success h6').innerText = `Volatility ${(data['portfolio']['performance'][1]*100).toFixed(2)}%`;
+
+                // Update the table
+                $('.table').DataTable().destroy();
+                let table = document.querySelector('.table');
+                let tableBody;
+                if (table) {
+                    tableBody = table.querySelector('tbody');
+                }
+                if (!tableBody) {
+                    console.error('Could not find the table body.');
+                    return;
+                }
+                
+                tableBody.innerHTML = '';
+                const keys = Object.keys(data.individuals);
+
+                
+                keys.forEach(key => {
+                    console.log(data.individuals[key])
+
+                    let row = document.createElement('tr');
+                    // Stocks
+                    let cell = document.createElement('td');
+                    cell.textContent = key;
+                    row.appendChild(cell);
+
+                    // Price
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Last_Close_Price']).toFixed(0);
+                    row.appendChild(cell);
+
+                    // Weight
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Weight']).toFixed(4);
+                    row.appendChild(cell);
+
+                    // Volume
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Adjusted_Volume']).toFixed(0);
+                    row.appendChild(cell);
+
+                    // Total Value
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Total_Value']).toFixed(0);
+                    row.appendChild(cell);
+
+                    // Selected 
+                    cell = document.createElement('td');
+                    if (data.individuals[key]['Weight'] > 0) {
+                        cell.textContent = '';
+                        cell.innerHTML = '<span class="badge badge-success">Selected</span>';
+                    } else {
+                        cell.textContent = '';
+                    }
+                    row.appendChild(cell);
+
+                    // Plot
+                    row.addEventListener('mouseover', () => {
+                        let figData = JSON.parse(data.individuals[key]['fig']);
+                        Plotly.newPlot('lineChart', figData.data, figData.layout, {responsive: true});
+                    });
+                    tableBody.appendChild(row);
+                });
+
+                $('.table').DataTable({
+                    pageLength: 5,
+                    order: [[4, 'desc']] 
+                });
+              })
+              .catch(error => {
+                  console.error('Error:', error);
+              });
+        }
+
+        // This event listener triggers when the website finishes loading
+        document.addEventListener("DOMContentLoaded", function() {
+            load_portfolio();
+        });
+
+      // =====================
+      // Optimise Portfolio
+      // =====================
+        function calPortfolio() {
+            const portfolioValue = document.getElementById('portfolioValue').value;
+            const transactionCost = document.getElementById('transactionCost').value;
+
+            const body = JSON.stringify({
+                portfolioValue: portfolioValue,
+                transactionCost: transactionCost
+            });
+
+            fetch('/cal_portfolio', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: body
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Received data:', data);
+
+                // Update the Cardboard
+                document.querySelector('.card.bg-gradient-danger h2').innerText = `$${data['portfolio']['portfolio_value'].toFixed(2)}`;
+                document.querySelector('.card.bg-gradient-danger h6').innerText = `Estimated Cost $${data['portfolio']['cost'].toFixed(2)} (${(data['portfolio']['cost']/data['portfolio']['portfolio_value']*100).toFixed(2)}%)`;
+                document.querySelector('.card.bg-gradient-info h2').innerText = `$${data['portfolio']['portfolio_return'].toFixed(2)} (${((data['portfolio']['portfolio_return']/data['portfolio']['portfolio_value'])*100).toFixed(2)}%)`;
+                document.querySelector('.card.bg-gradient-info h6').innerText = `95% CI [${(data['portfolio']['confidence_interval'][0]*100).toFixed(2)}%; ${(data['portfolio']['confidence_interval'][1]*100).toFixed(2)}%]`;
+                document.querySelector('.card.bg-gradient-success h2').innerText = `${(data['portfolio']['performance'][2]).toFixed(2)}`;
+                document.querySelector('.card.bg-gradient-success h6').innerText = `Volatility ${(data['portfolio']['performance'][1]*100).toFixed(2)}%`;
+
+                // Update the table
+                $('.table').DataTable().destroy();
+                let table = document.querySelector('.table');
+                let tableBody;
+                if (table) {
+                    tableBody = table.querySelector('tbody');
+                }
+                if (!tableBody) {
+                    console.error('Could not find the table body.');
+                    return;
+                }
+                
+                tableBody.innerHTML = '';
+                const keys = Object.keys(data.individuals);
+
+                
+                keys.forEach(key => {
+                    console.log(data.individuals[key])
+
+                    let row = document.createElement('tr');
+                    // Stocks
+                    let cell = document.createElement('td');
+                    cell.textContent = key;
+                    row.appendChild(cell);
+
+                    // Price
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Last_Close_Price']).toFixed(0);
+                    row.appendChild(cell);
+
+                    // Weight
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Weight']).toFixed(4);
+                    row.appendChild(cell);
+
+                    // Volume
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Adjusted_Volume']).toFixed(0);
+                    row.appendChild(cell);
+
+                    // Total Value
+                    cell = document.createElement('td');
+                    cell.textContent = parseFloat(data.individuals[key]['Total_Value']).toFixed(0);
+                    row.appendChild(cell);
+
+                    // Selected 
+                    cell = document.createElement('td');
+                    if (data.individuals[key]['Weight'] > 0) {
+                        cell.textContent = '';
+                        cell.innerHTML = '<span class="badge badge-success">Selected</span>';
+                    } else {
+                        cell.textContent = '';
+                    }
+                    row.appendChild(cell);
+
+                    // Plot
+                    row.addEventListener('mouseover', () => {
+                        let figData = JSON.parse(data.individuals[key]['fig']);
+                        Plotly.newPlot('lineChart', figData.data, figData.layout, {responsive: true});
+                    });
+                    tableBody.appendChild(row);
+                });
+
+                $('.table').DataTable({
+                    pageLength: 5,
+                    order: [[4, 'desc']] 
+                });
+
+            });
+      }
+
+
+    </script>
+
+
+  </body>
+</html>

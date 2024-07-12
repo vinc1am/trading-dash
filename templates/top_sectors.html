@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Trading Dash</title>
+    <link rel="stylesheet" href="../../assets/vendors/mdi/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="../../assets/vendors/css/vendor.bundle.base.css">
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="shortcut icon" href="../../assets/images/favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="../../assets/css/jquery.dataTables.min.css"/>
+    <script src="../assets/js/jquery-3.5.1.min.js"></script>
+    <script src="../assets/js/plotly-latest.min.js"></script>
+
+
+  </head>
+  <body>
+    <div class="container-scroller">
+
+      {% include '_navbar.html' %}
+      <div class="container-fluid page-body-wrapper">
+
+
+        {% include '_sidebar.html' %}
+
+        <div class="main-panel">
+          <div class="content-wrapper">
+
+            <div class="row">
+                <div class="col-lg-8 grid-margin stretch-card">
+                    <div class="card">
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4 class="card-title">Top MVS Sectors Advisor</h4>
+                        <button class="btn btn-primary" onclick="calSectorsMVS()">Calculate MVS</button>
+                        </div>
+                        <p class="card-description"></p>
+                        <table class="table table-hover">
+                        <thead>
+                            <tr>
+                            <th>AI-based Sectors</th>
+                            <th>Momentum</th>
+                            <th>Volatility</th>
+                            <th>MVS</th>
+                            <th>Rank</th>
+                            </tr>
+                        </table>
+                    </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 grid-margin stretch-card">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">
+                                <span id="stockName">Stocks in AI-based Sectors</span> 
+                            </h4>
+                            <p id="selectedStock" class="card-description">No data available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+  
+                <div class="row">
+                    <div class="col-lg-4 grid-margin stretch-card">
+                        <div class="card" >
+                            <div class="card-body" >
+                                <div id="noData" style="position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">No data available</div>
+                                <canvas id="barChart" width="400" height="400"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 grid-margin stretch-card">
+                        <div class="card">
+                            <div class="card-body" style="height: 500px; position: relative;">
+                                <div id="lineChart" style="height: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+          </div>
+          {% include '_footer.html' %}
+        </div>
+      </div>
+
+    </div>
+    <script src="../../assets/vendors/js/vendor.bundle.base.js"></script>
+    <script src="../../assets/vendors/chart.js/Chart.min.js"></script>
+    <script src="../../assets/js/off-canvas.js"></script>
+    <script src="../../assets/js/hoverable-collapse.js"></script>
+    <script src="../../assets/js/misc.js"></script>
+    <script src="../../assets/js/jquery.dataTables.min.js"></script>
+
+  
+    <script>
+
+      // =====================
+      //   Sectors MVS Table
+      // =====================
+      $(document).ready(function() {
+          $('.table').DataTable({
+              "pageLength": 5
+          });
+      });
+
+
+      // =====================
+      // Load Sector MVS
+      // =====================
+        // Function to load MVS sectors data
+        function loadSectorsMVS() {
+            fetch('/load_sector_mvs')
+                .then(response => response.json())
+                .then(data => {
+
+                    let figData = JSON.parse(data.ai_sectors_fig);
+                    Plotly.newPlot('lineChart', figData.data, figData.layout, {responsive: true});
+
+                    // Destroy the DataTable before refreshing with new data
+                    $('.table').DataTable().destroy();
+                    let table = document.querySelector('.table');
+                    let tableBody;
+                    if (table) {
+                        tableBody = table.querySelector('tbody');
+                    }
+                    if (!tableBody) {
+                        console.error('Could not find the table body.');
+                        return;
+                    }
+                    
+                    tableBody.innerHTML = '';
+                    const keys = Object.keys(data.mvs_result.mvs);
+
+                    
+                    keys.forEach(key => {
+                        let row = document.createElement('tr');
+
+                        // AI-based Sectors
+                        let cell = document.createElement('td');
+                        cell.textContent = key;
+                        row.appendChild(cell);
+
+                        // Momentum
+                        cell = document.createElement('td');
+                        cell.textContent = parseFloat(data.mvs_result.mom[key]).toFixed(4);
+                        row.appendChild(cell);
+
+                        // Volatility
+                        cell = document.createElement('td');
+                        cell.textContent = parseFloat(data.mvs_result.vol[key]).toFixed(4);
+                        row.appendChild(cell);
+
+                        // MVS
+                        cell = document.createElement('td');
+                        cell.textContent = parseFloat(data.mvs_result.mvs[key]).toFixed(3);
+                        row.appendChild(cell);
+
+                        // Badge column
+                        cell = document.createElement('td');
+                        if (key == data.target_sectors.best[0]) {
+                            cell.textContent = '';
+                            cell.innerHTML = '<span class="badge badge-warning">Best</span>';
+                        } else if (data.target_sectors.top.some(element => element[0] == key)) {
+                            cell.textContent = '';
+                            cell.innerHTML = '<span class="badge badge-success">Top</span>';
+                        } else if (data.target_sectors.bottom.some(element => element[0] == key)) {
+                            cell.textContent = '';
+                            cell.innerHTML = '<span class="badge badge-danger">Bottom</span>';
+                        } else {
+                            cell.textContent = '';
+                        }
+
+                        row.appendChild(cell);
+
+                        tableBody.appendChild(row);
+                    });
+
+                    $('.table').DataTable({
+                        pageLength: 5,
+                        order: [[3, 'desc']] 
+                    });
+
+                    $('table').on('mouseover', 'tr', function(event) {
+                        const tds = $(this).find('td');
+                        if (tds.length === 0) return; // skip if it's the header
+
+                        const sectorName = tds.eq(0).text();
+
+                        // fetch stocks for the AI-based sector
+                        const sectorStocks = data.ai_sectors[sectorName];
+
+                        if (sectorStocks) {
+                            displaySectorStocks(sectorStocks);
+
+                            // fetch sector distribution for the donut chart
+                            const sectorDistribution = data.ai_sectors_gics[sectorName];
+                            const chartLabels = Object.keys(sectorDistribution);
+                            const chartData = Object.values(sectorDistribution);
+                            drawSectorDistributionChart(chartLabels, chartData, sectorName);
+                        } else {
+                            document.getElementById('noData').style.display = 'block';
+                            if (window.myChart instanceof Chart) window.myChart.destroy();
+                        }
+
+                        // display the stocks related to the sector
+                        function displaySectorStocks(names) {
+                            // display list of stock names
+                            document.getElementById('selectedStock').innerText = names.join(', ');
+                        }
+                    });
+
+                  // Handle sectorDistribution for chart
+                  document.getElementById('noData').style.display = 'none';
+                  drawSectorDistributionChart(data.sectorDistribution);
+              })
+              .catch(error => {
+                  console.error('Error:', error);
+              });
+        }
+
+        // This event listener triggers when the website finishes loading
+        document.addEventListener("DOMContentLoaded", function() {
+            loadSectorsMVS();
+        });
+
+      // =====================
+      // Calculate Sector MVS
+      // =====================
+      function calSectorsMVS() {
+          fetch('/cal_sectors_mvs')
+              .then(response => response.json())
+              .then(data => {
+                    console.log('Received data:', data);
+
+                    let figData = JSON.parse(data.ai_sectors_fig);
+                    Plotly.newPlot('lineChart', figData.data, figData.layout, {responsive: true});
+
+                    // Destroy the DataTable before refreshing with new data
+                    $('.table').DataTable().destroy();
+                    let table = document.querySelector('.table');
+                    let tableBody;
+                    if (table) {
+                        tableBody = table.querySelector('tbody');
+                    }
+                    if (!tableBody) {
+                        console.error('Could not find the table body.');
+                        return;
+                    }
+                    
+                    tableBody.innerHTML = '';
+                    const keys = Object.keys(data.mvs_result.mvs);
+
+                    
+                    keys.forEach(key => {
+                        let row = document.createElement('tr');
+
+                        // AI-based Sectors
+                        let cell = document.createElement('td');
+                        cell.textContent = key;
+                        row.appendChild(cell);
+
+                        // Momentum
+                        cell = document.createElement('td');
+                        cell.textContent = parseFloat(data.mvs_result.mom[key]).toFixed(4);
+                        row.appendChild(cell);
+
+                        // Volatility
+                        cell = document.createElement('td');
+                        cell.textContent = parseFloat(data.mvs_result.vol[key]).toFixed(4);
+                        row.appendChild(cell);
+
+                        // MVS
+                        cell = document.createElement('td');
+                        cell.textContent = parseFloat(data.mvs_result.mvs[key]).toFixed(3);
+                        row.appendChild(cell);
+
+                        // Badge column
+                        cell = document.createElement('td');
+                        if (key == data.target_sectors.best[0]) {
+                            cell.textContent = '';
+                            cell.innerHTML = '<span class="badge badge-warning">Best</span>';
+                        } else if (data.target_sectors.top.some(element => element[0] == key)) {
+                            cell.textContent = '';
+                            cell.innerHTML = '<span class="badge badge-success">Top</span>';
+                        } else if (data.target_sectors.bottom.some(element => element[0] == key)) {
+                            cell.textContent = '';
+                            cell.innerHTML = '<span class="badge badge-danger">Bottom</span>';
+                        } else {
+                            cell.textContent = '';
+                        }
+
+                        row.appendChild(cell);
+
+                        tableBody.appendChild(row);
+                    });
+
+                    $('.table').DataTable({
+                        pageLength: 5,
+                        order: [[3, 'desc']] 
+                    });
+
+                    $('table').on('mouseover', 'tr', function(event) {
+                        const tds = $(this).find('td');
+                        if (tds.length === 0) return; // skip if it's the header
+
+                        const sectorName = tds.eq(0).text();
+
+                        // fetch stocks for the AI-based sector
+                        const sectorStocks = data.ai_sectors[sectorName];
+
+                        if (sectorStocks) {
+                            displaySectorStocks(sectorStocks);
+
+                            // fetch sector distribution for the donut chart
+                            const sectorDistribution = data.ai_sectors_gics[sectorName];
+                            const chartLabels = Object.keys(sectorDistribution);
+                            const chartData = Object.values(sectorDistribution);
+                            drawSectorDistributionChart(chartLabels, chartData, sectorName);
+                        } else {
+                            document.getElementById('noData').style.display = 'block';
+                            if (window.myChart instanceof Chart) window.myChart.destroy();
+                        }
+
+                        // display the stocks related to the sector
+                        function displaySectorStocks(names) {
+                            // display list of stock names
+                            document.getElementById('selectedStock').innerText = names.join(', ');
+                        }
+                    });
+
+                  // Handle sectorDistribution for chart
+                  document.getElementById('noData').style.display = 'none';
+                  drawSectorDistributionChart(data.sectorDistribution);
+              })
+              .catch(error => {
+                  console.error('Error:', error);
+              });
+      }
+
+
+
+
+      // ===========================
+      // Draw Sectors Distribution
+      // ===========================
+        function drawSectorDistributionChart(chartLabels, chartData, currentSector) {
+            const ctx = document.getElementById('barChart');
+
+            const backgroundColors = Array(chartLabels.length)
+                    .fill()
+                    .map(() => `rgba(${Math.round(Math.random() * 255)}, ${Math.round(Math.random() * 255)}, ${Math.round(Math.random() * 255)}, 0.6)`);
+            
+            if (window.myChart instanceof Chart) window.myChart.destroy();
+
+            window.myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: backgroundColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Sector Distribution for ${currentSector}`
+                        },
+                        legend: {
+                            display: true, 
+                            position: 'left'
+                        }
+                    }
+                }
+            });
+        }
+
+
+    </script>
+
+
+  </body>
+</html>
